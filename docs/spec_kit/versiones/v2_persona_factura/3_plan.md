@@ -174,5 +174,5 @@ solos por sus atributos.
 
 ## 5. Docker
 
-Sin cambios: mismos 3 servicios, mismos puertos (API 8032 · SQL Server
-11463 al host). `dotnet watch` recompila al agregar los archivos nuevos.
+Sin cambios: mismos 3 servicios, mismos puertos (API 8033 · SQL Server
+11464 al host). `dotnet watch` recompila al agregar los archivos nuevos.
