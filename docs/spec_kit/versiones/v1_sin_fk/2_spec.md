@@ -1,4 +1,4 @@
-# Especificación — Versión 1 del proyecto: api_facturas con producto + SQL Server
+# Especificación — Versión 1: las SEIS tablas sin clave foránea, con su interfaz gráfica
 
 > **Versión 1** del desarrollo incremental ([mapa de versiones](../0_mapa_versiones.md)).
 > Rige la constitución del proyecto: [../../1_constitution.md](../../1_constitution.md).
@@ -48,14 +48,29 @@ servicio → repositorio, comunicados por **interfaces de C#**.
 
 La v1 es pequeña a propósito: su valor no está en la funcionalidad sino en
 dejar el **esqueleto arquitectónico correcto** sobre el que las versiones
-siguientes agregan tablas (v2), motores (v3, v4) y el
-frontend Blazor (v5) **sin reescribir lo construido**.
+siguientes agregan las tablas con clave foránea (v2), el control de acceso
+(v3) y el aplicativo completo (v4) **sin reescribir lo construido**.
+
+Y el esqueleto incluye **las dos mitades**: la API y la interfaz. Que se
+construyan en paralelo desde la v1 es lo que impide descubrir a la tercera
+versión que el contrato era incómodo de pintar.
 
 ## 2. Alcance
 
+> **Qué define la v1:** **las tablas que NO tienen clave foránea.** En
+> `bdfacturas` son **seis** —`producto` · `empresa` · `persona` · `rol` · `ruta` · `usuario`—, y se pueden
+> llenar sin que exista nada más. Por eso son las primeras.
+>
+> **Y la versión entrega su API Y SU INTERFAZ GRÁFICA.** Media versión no es una
+> versión.
+
 **Incluye:**
-- CRUD de `producto`: listar, obtener por código, crear, reemplazar,
-  actualizar parcialmente, eliminar.
+- **CRUD de los SEIS recursos**: listar, obtener por clave, crear, reemplazar,
+  actualizar parcialmente y eliminar. Son **seis rebanadas verticales
+  idénticas salvo los campos** — y que se repitan es el punto: con una sola
+  no aparece la pregunta de si conviene un genérico.
+- **Una INTERFAZ GRÁFICA por recurso**, con dirección propia (`/productos`,
+  `/empresas`, …), nunca una ruta con el nombre de la tabla como parámetro.
 - **Modelo entidad** (`Producto`): la clase con las 4 propiedades tipadas
   (en C#, las propiedades `{ get; set; }` SON los getters/setters del
   lenguaje).
@@ -77,12 +92,16 @@ frontend Blazor (v5) **sin reescribir lo construido**.
   navegador.
 
 **No incluye (y es deliberado — ver [mapa de versiones](../0_mapa_versiones.md)):**
-- **Ningún frontend** (Blazor llega en v5).
-- Endpoints para otras entidades (v2) — las otras 11 tablas EXISTEN en la
-  BD, pero el código de la v1 solo puede nombrar `producto`.
-- Otros motores y la fábrica de repositorios (v3, v4).
-- ORM de entidades (Entity Framework) y autenticación — no son de la
-  v1 (Dapper NO es ORM de entidades: es el micro-ejecutor del Art. 2).
+- **Las SEIS tablas con clave foránea** —`cliente`, `vendedor`, `factura`,
+  `productosporfactura`, `rol_usuario`, `rutarol`—: son la **v2**. Existen en
+  la base desde la v1 (Artículo 5), pero el código de esta versión **no las
+  puede nombrar**.
+- **JWT, sesiones y control de acceso por rol**: es la **v3**. Ojo: el CRUD de
+  `usuario` y `rol` **sí es de esta versión** —no tienen FK—; lo que llega en
+  la v3 **no es su CRUD, es la puerta**.
+- Consultas multitabla, dashboard, manual de marca y publicación: la **v4**.
+- ORM de entidades (Entity Framework) — Dapper NO es ORM de entidades: es el
+  micro-ejecutor del Artículo 2.
 
 ## 3. Requisitos funcionales
 
@@ -130,14 +149,14 @@ inexistente → 404.
   conoce HTTP ni el motor; el repositorio no conoce HTTP. Contratos con
   `interface` de C#.
 - **RNF2 — SQL a la vista:** el SQL se escribe a mano y Dapper solo lo
-  ejecuta y mapea (sin Entity Framework); paquetes:
-  `Microsoft.Data.SqlClient`, `Dapper` y `Swashbuckle` (Artículo 2).
+  ejecuta y mapea (sin Entity Framework); paquetes: `Microsoft.Data.SqlClient`, `Dapper`
+  y `Swashbuckle` (Artículo 2).
 - **RNF3 — SQL SIEMPRE parametrizado** (`@parametro`); nada de concatenar
   valores.
 - **RNF4 — Asíncrona:** todo el acceso a datos con `async/await`.
 - **RNF5 — Errores uniformes:** `{estado, mensaje, detalle}` (y
   `errores:[…]` en el 422); ArgumentException→400 ·
-  NoEncontradoExcepcion→404 · SqlException y demás→500.
+  NoEncontradoExcepcion→404 · Microsoft.Data.SqlClientException y demás→500.
 - **RNF6 — Sin anticipación:** ni fábrica multi-motor ni selección de motor
   en v1 (los introduce la v3 cuando exista el segundo motor).
 
@@ -145,7 +164,7 @@ inexistente → 404.
 
 1. **`docker compose up -d --build` — un solo comando —** deja corriendo
    SQL Server (inicializado con el script provisto: 12 tablas), y la API;
-   `GET http://localhost:8033/` responde el JSON de diagnóstico. Guardar un
+   `GET http://localhost:8032/` responde el JSON de diagnóstico. Guardar un
    `.cs` recompila y reinicia solo (dotnet watch).
 2. `GET /api/producto` devuelve los 8 productos de ejemplo con
    `{tabla:"producto", total:8, datos:[…]}`, y `GET /api/producto?limite=3`
@@ -164,6 +183,35 @@ inexistente → 404.
 6. **Prueba de capas:** `dotnet run --project pruebas` (o vía
    `docker compose exec`) ejecuta el servicio con un repositorio FALSO en
    memoria — sin SQL Server — y todas las verificaciones pasan.
+
+### Y los de LA INTERFAZ GRÁFICA, que son la otra mitad de la versión
+
+7. **`http://localhost:8096/productos` lista los 8 productos**, cada uno con
+   su código, nombre, stock y valor unitario. La dirección es **propia del
+   recurso** —`/productos`—, no una ruta con el nombre de la tabla como
+   parámetro.
+8. **Se crea un producto desde la interfaz gráfica** y aparece en la lista sin
+   recargar a mano. Y si la API lo rechaza —código duplicado, stock
+   negativo—, **el mensaje sale EN LA INTERFAZ GRÁFICA**, no en la consola del
+   navegador, y **lo que la persona había escrito NO se borra**.
+9. **Los dos botones de guardar existen y hacen cosas distintas:** «Guardar
+   la ficha completa» (el `PUT`: si falta un campo, la API responde 422) y
+   «Guardar solo lo que cambié» (el `PATCH`: el mismo cuerpo responde 200).
+   **La interfaz gráfica no le dice `PUT` ni `PATCH` ni `422` a la persona.**
+10. **Con la API apagada, la interfaz gráfica SIGUE EN PIE.** Se comprueba así:
+
+    ```powershell
+    docker compose stop api-facturas
+    ```
+
+    Recargue `http://localhost:8096/productos`: tiene que mostrar el menú y
+    un aviso de que no se pudo conectar, **y ni una sola fila**. Si siguiera
+    mostrando los productos, el front estaría leyendo de donde no debe — o no
+    maneja el caso de que la API no responda, que es el mismo problema visto
+    de otro lado.
+
+> **Una versión no está cerrada si la API responde y la interfaz gráfica no.** Los
+> criterios 7 a 10 pesan lo mismo que los seis de arriba.
 
 ## 6. Clarificaciones
 
