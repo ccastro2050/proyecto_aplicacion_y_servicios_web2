@@ -115,23 +115,54 @@ cd proyecto_aplicacion_y_servicios_web2
 docker compose up -d --build
 ```
 
-**Eso es todo.** La primera vez tarda varios minutos (descarga imágenes,
-el inicializador crea la BD, y la primera compilación de la API toma
-~1 minuto más). Al terminar quedan corriendo la base de datos (bdfacturas
-completa en SQL Server) y la API:
+**Eso es todo.** La primera vez tarda unos minutos (descarga imágenes,
+el inicializador crea la base, y la primera compilación
+toma ~1 minuto más). Al terminar quedan corriendo **tres contenedores**: la
+base de datos, la API y la **interfaz gráfica**.
+
+### Lo primero que hay que abrir
 
 | Qué | Dónde |
 |---|---|
-| **API Facturas** — diagnóstico | http://localhost:8033/ |
-| **Swagger** (documentación interactiva: ver y probar los endpoints) | http://localhost:8033/swagger |
-| Listar productos | http://localhost:8033/api/producto |
+| **La interfaz gráfica** — por aquí se empieza | **http://localhost:8097** |
+| **Swagger** — la API, para verla y probarla | http://localhost:8033/swagger |
+| La API — diagnóstico | http://localhost:8033/ |
 | SQL Server (para SQLTools/SSMS, opcional) | `localhost,11464` · `sa`/`Paradigmas123!` |
 
-Pruebe la joya didáctica de la v1: PUT con solo `{"stock": 99}` → 422; el
-mismo body en PATCH → 200. Esa diferencia es parte de lo que enseña la
-versión (contratos exactos en el spec kit).
+> **La interfaz gráfica y la API son dos puertos distintos**, y conviene no
+> confundirlos: el **8097** es lo que se abre en el navegador; el **8033**
+> es lo que esa interfaz consume. Abrir `8097/swagger` da 404 — Swagger vive
+> en la API.
 
-> ℹ️ Este proyecto usa los puertos 8033 y 11464: si alguno ya está ocupado
+### El menú de la interfaz gráfica
+
+**Doce entradas**, agrupadas por versión — y es la forma más rápida de ver que cada versión **incluye la anterior**:
+
+| Dirección | En el menú | De la |
+|---|---|---|
+| `/productos` | Productos | v1 |
+| `/empresas` | Empresas | v1 |
+| `/personas` | Personas | v1 |
+| `/roles` | Roles | v1 |
+| `/rutas` | Rutas | v1 |
+| `/usuarios` | Usuarios | v1 |
+| `/clientes` | Clientes | v2 |
+| `/vendedores` | Vendedores | v2 |
+| `/facturas` | Facturas | v2 |
+| `/usuario-con-roles` | Usuarios y roles | v2 |
+| `/rol-usuario` | Roles por usuario | v2 |
+| `/ruta-rol` | Permisos por rol | v2 |
+
+> **El menú nombra RECURSOS del dominio, no tablas ni rutas de la API.**
+> Dice «Facturas», no `/api/factura`.
+
+**Lo que hay que mirar en esta versión** está en `/facturas`: agregue **tres**
+renglones, quite **uno**, y emita. Tienen que llegar **dos**. Si llegaran tres,
+el detalle se estaría enviando a medida que se agrega — y eso no es un
+maestro-detalle.
+
+> ℹ️ Este proyecto usa los puertos **8097** (interfaz gráfica), **8033**
+> (API) y **11464** (SQL Server): si alguno ya está ocupado
 > en su máquina, cámbielo en `docker-compose.yml` (el lado izquierdo del
 > `"puerto:puerto"`).
 >
